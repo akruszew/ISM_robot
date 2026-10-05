@@ -18,6 +18,12 @@ void motor_set_voltage(float voltage_v)
 {
     voltage_v = constrain(voltage_v, -MAX_MOTOR_VOLTAGE_V, MAX_MOTOR_VOLTAGE_V);
     motor_last_voltage = voltage_v;
+    if(voltage_v ==0)
+    {
+        motor_stop(MOTOR_COAST);
+        return;
+    }
+
     if (voltage_v > 0)
     {
         digitalWrite(MOTOR_I2_PIN, LOW);
