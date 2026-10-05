@@ -1,14 +1,10 @@
 #include <Arduino.h>
 #include "motor.h"
-
+#include "encoder.h"
 #define DT 5
-#define VA 18
-#define VB 31
-#define I1 34
-#define I2 35
-#define PWM 12
 
-volatile long compteur = 0;
+
+
 
 float getSpeed();
 void ISR_VA();
@@ -17,12 +13,18 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   Serial.println("Hello");
-  pinMode(VA, INPUT_PULLUP);
-  pinMode(VB, INPUT_PULLUP);
+
+  if(motor_init()==false){
+    Serial.println("failled init motor");
+    while (1) {    }
+  }
   
-  motor_init();
- 
-  attachInterrupt(digitalPinToInterrupt(VA), ISR_VA, RISING);
+  if(encoder_init()==false){
+    Serial.println("failled init encoder");
+    while (1) {    }
+  }
+
+  
 }
 
 void loop() {
@@ -36,9 +38,8 @@ void loop() {
     temps = millis();
   }
   temps_prec = temps;
-  noInterrupts();
-  long compteur_copy = compteur;
-  interrupts();
+
+  
   float u = 0;
   if(temps < 1000) 
   {
@@ -63,28 +64,11 @@ void loop() {
   Serial.println(" ");
 }
 
-volatile long  t_ISR_last = 0;
-volatile long  t_ISR = 0;
-
-void ISR_VA(){
-  if(digitalRead(VB)){
-    compteur++;  
-  }else{
-    compteur--;
-  }
-  t_ISR_last = t_ISR;
-  t_ISR = micros();
-}
-
 float getSpeed(){
-  float  t_ISR_last_copy;
-  float  t_ISR_copy;
-  noInterrupts();
-  t_ISR_last_copy =t_ISR_last;
-  t_ISR_copy = t_ISR;
-  interrupts();
-  if( t_ISR==t_ISR_last)
-    return 0;
-  else
-    return (1.0/(t_ISR_copy-t_ISR_last_copy) )*1e6;
+  static uint32_t last_sample_time_us = 0;
+  float delta_ticks = encoder_get_and_reset_delta();
+  uint32_t current_time_us = micros();
+  float delta_time = current_time_us-last_sample_time_us;
+  last_sample_time_us = current_time_us;
+  return delta_ticks*1e6/delta_time;
 }

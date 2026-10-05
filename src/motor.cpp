@@ -16,6 +16,13 @@ bool motor_init(void)
 
 void motor_set_voltage(float voltage_v)
 {
+    if(voltage_v == NAN)
+        return;
+    if(voltage_v == INFINITY)
+        return;
+    if(voltage_v == -INFINITY)
+        return;
+        
     voltage_v = constrain(voltage_v, -MAX_MOTOR_VOLTAGE_V, MAX_MOTOR_VOLTAGE_V);
     motor_last_voltage = voltage_v;
     if(voltage_v ==0)
