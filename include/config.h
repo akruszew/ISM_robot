@@ -13,4 +13,8 @@
 #define ENCODER_VA 18
 #define ENCODER_VB 31
 
+// Periods
+#define SPEED_PERIOD_US 5000
+#define TELEMETRY_PERIOD_US 50000
+
 #endif
