@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "motor.h"
 
 #define DT 5
 #define VA 18
@@ -19,24 +20,9 @@ void setup() {
   pinMode(VA, INPUT_PULLUP);
   pinMode(VB, INPUT_PULLUP);
   
-  pinMode(I1, OUTPUT);
-  pinMode(I2, OUTPUT);
-  pinMode(PWM, OUTPUT);
+  motor_init();
+ 
   attachInterrupt(digitalPinToInterrupt(VA), ISR_VA, RISING);
-}
-
-
-void Moteur(float voltage){
-  voltage = constrain(voltage,-9.0, 9.0);
-  if(voltage>0)
-  {
-    digitalWrite(I2,LOW);
-    digitalWrite(I1,HIGH);
-  }else{
-    digitalWrite(I1,LOW);
-    digitalWrite(I2,HIGH);
-  }
-  analogWrite(PWM, abs(voltage)*255.0/12.0   );
 }
 
 void loop() {
@@ -66,7 +52,7 @@ void loop() {
   u =0  ;
   }
    
-  Moteur(u);
+  motor_set_voltage(u);
   Serial.print(temps);
   Serial.print(" ,");
   Serial.print(u);
