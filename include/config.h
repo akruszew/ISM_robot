@@ -20,8 +20,4 @@
 #define ENCODER_RIGHT_VA 19
 #define ENCODER_RIGHT_VB 38
 
-// Periods
-#define SPEED_PERIOD_US 5000
-#define TELEMETRY_PERIOD_US 50000
-
 #endif
