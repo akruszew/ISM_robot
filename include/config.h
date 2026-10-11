@@ -1,17 +1,24 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Motor pinout config
+// Motors pinout config
 #define MAX_MOTOR_VOLTAGE_V 9.0f
 #define MOTOR_SUPPLY_VOLTAGE_V 12.0f
 
-#define MOTOR_I1_PIN 34
-#define MOTOR_I2_PIN 35
-#define MOTOR_PWM_PIN 12
+#define MOTOR_LEFT_I1_PIN 34
+#define MOTOR_LEFT_I2_PIN 35
+#define MOTOR_LEFT_PWM_PIN 12
 
-// Encoder pinout
-#define ENCODER_VA 18
-#define ENCODER_VB 31
+#define MOTOR_RIGHT_I1_PIN 37
+#define MOTOR_RIGHT_I2_PIN 36
+#define MOTOR_RIGHT_PWM_PIN 12   
+
+// Encoders pinout
+#define ENCODER_LEFT_VA 18
+#define ENCODER_LEFT_VB 31
+
+#define ENCODER_RIGHT_VA 19
+#define ENCODER_RIGHT_VB 38
 
 // Periods
 #define SPEED_PERIOD_US 5000

@@ -7,7 +7,7 @@ volatile long encoder_ticks = 0;
 
 
 void ISR_VA(){
-  if(digitalRead(ENCODER_VB)){
+  if(digitalRead(ENCODER_LEFT_VB)){
     encoder_ticks++;  
   }else{
     encoder_ticks--;
@@ -15,9 +15,9 @@ void ISR_VA(){
 }
 
 bool encoder_init(void){
-  pinMode(ENCODER_VA, INPUT_PULLUP);
-  pinMode(ENCODER_VB, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_VA), ISR_VA, RISING);
+  pinMode(ENCODER_LEFT_VA, INPUT_PULLUP);
+  pinMode(ENCODER_LEFT_VB, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_LEFT_VA), ISR_VA, RISING);
   return true;
 }
 

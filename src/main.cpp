@@ -4,15 +4,26 @@
 #include "config.h"
 #define DT 5
 
+
+static Motor *motor_left;
+static Motor *motor_right;
+
 float getSpeed();
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   Serial.println("Hello");
-
-  if(motor_init()==false){
-    Serial.println("failled init motor");
+  motor_left = motor_get(MOTOR_LEFT);
+  motor_right = motor_get(MOTOR_RIGHT);
+  
+  if(motor_init(motor_left)==false){
+    Serial.println("failled init left motor");
+    while (1) {    }
+  }
+  
+  if(motor_init(motor_right)==false){
+    Serial.println("failled init right motor");
     while (1) {    }
   }
   
@@ -23,14 +34,28 @@ void setup() {
  
 }
 
-void telemetry(uint32_t time_us,float voltage_v, float speed_ticks_per_s){
-  Serial.print(time_us);
-  Serial.print(" ,");
-  Serial.print(voltage_v);
-  Serial.print(" ,");
-  Serial.print(speed_ticks_per_s);
-  Serial.print(" ;");
-  Serial.println(" ");
+static void telemetry_run(uint32_t now_ms) // static = fonction privée du module
+{
+
+    float left_v, right_v;
+
+    bool left_valid =
+        motor_get_applied_voltage(motor_left, &left_v);
+    bool right_valid =
+        motor_get_applied_voltage(motor_right, &right_v);
+
+    Serial.print(now_ms);
+
+    Serial.print(',');
+    if (left_valid) Serial.print(left_v, 3);
+    else            Serial.print("NA");
+
+    Serial.print(',');
+    if (right_valid) Serial.print(right_v, 3);
+    else             Serial.print("NA");
+
+    Serial.println();
+
 }
 
 static bool period_is_due(
@@ -71,10 +96,11 @@ void loop() {
   uint32_t current_time_us = micros();
 
   float motor_voltage_v = update_voltage_sequence(current_time_us);
-  motor_set_voltage(motor_voltage_v);
+  motor_set_voltage(motor_left,motor_voltage_v);
+  motor_set_voltage(motor_right,-motor_voltage_v);
 
   if( period_is_due(current_time_us,&last_release_telemetry_us,TELEMETRY_PERIOD_US) ){
-    telemetry(current_time_us,motor_voltage_v,speed_tick_per_s);
+    telemetry_run(current_time_us);
   }
 
   if( period_is_due(current_time_us,&last_release_speed_us,SPEED_PERIOD_US) ){
