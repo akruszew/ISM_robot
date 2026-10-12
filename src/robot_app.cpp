@@ -208,6 +208,7 @@ static void run_statechart(uint32_t now_us)
         break;
     case IDLE:
         /* TODO : START [line_valid && line_present] -> FOLLOW. */
+        if(event == EVENT_START && line_present) transition_to(FOLLOW,NULL,now_us);
         break;
     case FOLLOW:
         /* TODO : LINE_LOST -> LOST. */
