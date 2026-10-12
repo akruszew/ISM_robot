@@ -2,6 +2,7 @@
 #include "motor.h"
 #include "encoder.h"
 #include "speed_controller.h"
+#include "line_sensor.h"
 /* static in global scope means private to this module */
 static const uint32_t SPEED_PERIOD_US = 50000; // pour augmenter la résoution de la mesure de vitesse.
 static const uint32_t TELEMETRY_PERIOD_US =100000;
@@ -39,7 +40,7 @@ static SpeedController right_controller{
   9.0f,
 };
 
-
+static LineReading line_reading = {0,0};
 
 /* Prélèvement des ticks et calcul avec la durée réellement écoulée. */
 static void update_speed(WheelSpeed *wheel, const uint32_t now_us)
@@ -185,40 +186,107 @@ float update_speed_sequence(uint32_t time_us)
   return 0.0f;
 }
 
-static bool run_speed_sequence(uint32_t time_us)
-{
-  const float ref_tick_s = update_speed_sequence(time_us);
-  float voltage_left, voltage_right;
-  static uint32_t last_us = 0;
-  float dt = (float)(time_us - last_us) * 1e-6f;
-  last_us = time_us ;
+// static bool run_speed_sequence(uint32_t time_us)
+// {
+//   const float ref_tick_s = update_speed_sequence(time_us);
+//   float voltage_left, voltage_right;
+//   static uint32_t last_us = 0;
+//   float dt = (float)(time_us - last_us) * 1e-6f;
+//   last_us = time_us ;
   
-  const bool left_controller_ok = 
-    speed_controller_update(&left_controller,
-                            ref_tick_s,
-                            left_speed.speed_ticks_s,
-                            dt,
-                            &voltage_left
-                          );
-  const bool right_controller_ok = 
-    speed_controller_update(&right_controller,
-                            -ref_tick_s,
-                            right_speed.speed_ticks_s,
-                            dt,
-                            &voltage_right
-                          );
-  if(!left_controller_ok || !right_controller_ok){
+//   const bool left_controller_ok = 
+//     speed_controller_update(&left_controller,
+//                             ref_tick_s,
+//                             left_speed.speed_ticks_s,
+//                             dt,
+//                             &voltage_left
+//                           );
+//   const bool right_controller_ok = 
+//     speed_controller_update(&right_controller,
+//                             -ref_tick_s,
+//                             right_speed.speed_ticks_s,
+//                             dt,
+//                             &voltage_right
+//                           );
+//   if(!left_controller_ok || !right_controller_ok){
+//     return false;
+//   }
+
+//   /* Évaluer les deux appels, sans court-circuit logique. */
+//   const bool left_ok =
+//       motor_set_voltage(motor_left, voltage_left);
+
+//   const bool right_ok =
+//       motor_set_voltage(motor_right, voltage_right);
+
+//   return left_ok && right_ok;
+// }
+static bool update_speed_refs(float* left_ref, float* right_ref)
+{
+  if(left_ref == NULL || right_ref == NULL)
     return false;
+
+  if(line_reading.left_detected && line_reading.right_detected){
+    *left_ref = 0.0f;
+    *right_ref = 0.0f;
+    return true;
   }
 
-  /* Évaluer les deux appels, sans court-circuit logique. */
-  const bool left_ok =
-      motor_set_voltage(motor_left, voltage_left);
+  if(line_reading.left_detected ){
+    *left_ref = 0.0f;
+    *right_ref = +50.0f;
+    return true;
+  }
 
-  const bool right_ok =
-      motor_set_voltage(motor_right, voltage_right);
+  if(line_reading.right_detected ){
+    *left_ref = +50.0f;
+    *right_ref = 0.0f;
+    return true;
+  }
+  return false;
+}
 
-  return left_ok && right_ok;
+static bool run_line_follower(uint32_t time_us)
+{
+    float ref_tick_s = 50.0f;
+
+    float left_ref_tick_s,right_ref_tick_s;
+    if(!update_speed_refs(&left_ref_tick_s,&right_ref_tick_s)){
+      return false;
+    }
+
+
+    float voltage_left, voltage_right;
+    static uint32_t last_us = 0;
+    float dt = (float)(time_us - last_us) * 1e-6f;
+    last_us = time_us ;
+    
+    const bool left_controller_ok = 
+      speed_controller_update(&left_controller,
+                              -ref_tick_s-left_ref_tick_s,
+                              left_speed.speed_ticks_s,
+                              dt,
+                              &voltage_left
+                            );
+    const bool right_controller_ok = 
+      speed_controller_update(&right_controller,
+                              +ref_tick_s+right_ref_tick_s,
+                              right_speed.speed_ticks_s,
+                              dt,
+                              &voltage_right
+                            );
+    if(!left_controller_ok || !right_controller_ok){
+      return false;
+    }
+
+    /* Évaluer les deux appels, sans court-circuit logique. */
+    const bool left_ok =
+        motor_set_voltage(motor_left, voltage_left);
+
+    const bool right_ok =
+        motor_set_voltage(motor_right, voltage_right);
+
+    return left_ok && right_ok;
 }
 
 void setup()
@@ -269,6 +337,8 @@ void setup()
   speed_controller_init(&left_controller);
   speed_controller_init(&right_controller);
 
+  line_sensor_init();
+
   // Telemetry
   Serial.println("temps_ms,consigne_gauche_V,consigne_droite_V,"
                  "vitesse_gauche_ticks_s,vitesse_droite_ticks_s");
@@ -294,7 +364,12 @@ void loop()
       return;
     }
 
-    if (!run_speed_sequence(now_us))
+    if(!line_sensor_read(&line_reading)){
+      stop_on_fault("Erreur : mesure line sensor");
+      return;
+    }
+
+    if (!run_line_follower(now_us))
     {
       stop_on_fault("Erreur : commande moteur");
       return;

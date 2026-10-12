@@ -20,4 +20,9 @@
 #define ENCODER_RIGHT_VA 19
 #define ENCODER_RIGHT_VB 38
 
+
+// line sensor 
+#define LINE_SENSOR_1 A10
+#define LINE_SENSOR_2 A11
+
 #endif
