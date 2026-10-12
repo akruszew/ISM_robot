@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "motor.h"
 #include "encoder.h"
-
+#include "speed_controller.h"
 /* static in global scope means private to this module */
 static const uint32_t SPEED_PERIOD_US = 50000; // pour augmenter la résoution de la mesure de vitesse.
 static const uint32_t TELEMETRY_PERIOD_US =100000;
@@ -23,6 +23,23 @@ static WheelSpeed right_speed = {NULL, 0, 0.0f, false};
 static uint32_t last_speed_us = 0;
 static uint32_t last_telemetry_us = 0;
 static bool ready = false;
+
+static SpeedController left_controller = {
+  0.01f,
+  0.01f,
+  0.0f,
+  -9.0f,
+  9.0f,
+};
+static SpeedController right_controller{
+  0.01f,
+  0.01f,
+  0.0f,
+  -9.0f,
+  9.0f,
+};
+
+
 
 /* Prélèvement des ticks et calcul avec la durée réellement écoulée. */
 static void update_speed(WheelSpeed *wheel, const uint32_t now_us)
@@ -139,16 +156,67 @@ static void stop_on_fault(const char *message)
   Serial.println(message);
 }
 
-static bool run_voltage_sequence(uint32_t time_us)
+// static bool run_voltage_sequence(uint32_t time_us)
+// {
+//   const float voltage_v = update_voltage_sequence(time_us);
+
+//   /* Évaluer les deux appels, sans court-circuit logique. */
+//   const bool left_ok =
+//       motor_set_voltage(motor_left, voltage_v);
+
+//   const bool right_ok =
+//       motor_set_voltage(motor_right, -voltage_v);
+
+//   return left_ok && right_ok;
+// }
+
+float update_speed_sequence(uint32_t time_us)
 {
-  const float voltage_v = update_voltage_sequence(time_us);
+  if (time_us < 10000000UL)
+  {
+    return 250.0f;
+  }
+
+  if (time_us < 20000000UL)
+  {
+    return -250.0f;
+  }
+
+  return 0.0f;
+}
+
+static bool run_speed_sequence(uint32_t time_us)
+{
+  const float ref_tick_s = update_speed_sequence(time_us);
+  float voltage_left, voltage_right;
+  static uint32_t last_us = 0;
+  float dt = (float)(time_us - last_us) * 1e-6f;
+  last_us = time_us ;
+  
+  const bool left_controller_ok = 
+    speed_controller_update(&left_controller,
+                            ref_tick_s,
+                            left_speed.speed_ticks_s,
+                            dt,
+                            &voltage_left
+                          );
+  const bool right_controller_ok = 
+    speed_controller_update(&right_controller,
+                            -ref_tick_s,
+                            right_speed.speed_ticks_s,
+                            dt,
+                            &voltage_right
+                          );
+  if(!left_controller_ok || !right_controller_ok){
+    return false;
+  }
 
   /* Évaluer les deux appels, sans court-circuit logique. */
   const bool left_ok =
-      motor_set_voltage(motor_left, voltage_v);
+      motor_set_voltage(motor_left, voltage_left);
 
   const bool right_ok =
-      motor_set_voltage(motor_right, -voltage_v);
+      motor_set_voltage(motor_right, voltage_right);
 
   return left_ok && right_ok;
 }
@@ -198,6 +266,9 @@ void setup()
   last_speed_us = start_us;
   last_telemetry_us = start_us;
 
+  speed_controller_init(&left_controller);
+  speed_controller_init(&right_controller);
+
   // Telemetry
   Serial.println("temps_ms,consigne_gauche_V,consigne_droite_V,"
                  "vitesse_gauche_ticks_s,vitesse_droite_ticks_s");
@@ -223,7 +294,7 @@ void loop()
       return;
     }
 
-    if (!run_voltage_sequence(now_us))
+    if (!run_speed_sequence(now_us))
     {
       stop_on_fault("Erreur : commande moteur");
       return;
