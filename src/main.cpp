@@ -3,7 +3,7 @@
 #include "encoder.h"
 
 /* static in global scope means private to this module */
-static const uint32_t SPEED_PERIOD_US = 50000;
+static const uint32_t SPEED_PERIOD_US = 50000; // pour augmenter la résoution de la mesure de vitesse.
 static const uint32_t TELEMETRY_PERIOD_US =100000;
 
 static Motor *motor_left;
