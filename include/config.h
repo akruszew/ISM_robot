@@ -11,7 +11,7 @@
 
 #define MOTOR_RIGHT_I1_PIN 37
 #define MOTOR_RIGHT_I2_PIN 36
-#define MOTOR_RIGHT_PWM_PIN 12   
+#define MOTOR_RIGHT_PWM_PIN 8
 
 // Encoders pinout
 #define ENCODER_LEFT_VA 18
