@@ -3,8 +3,8 @@
 #include "encoder.h"
 
 /* static in global scope means private to this module */
-static const uint32_t SPEED_PERIOD_US = 5000;
-static const uint32_t TELEMETRY_PERIOD_US = 50000;
+static const uint32_t SPEED_PERIOD_US = 50000;
+static const uint32_t TELEMETRY_PERIOD_US =100000;
 
 static Motor *motor_left;
 static Motor *motor_right;
