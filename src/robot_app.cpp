@@ -21,8 +21,8 @@ static uint32_t lost_since_us = 0;
 static uint32_t last_speed_us = 0;
 static uint32_t last_telemetry_us = 0;
 
-static const uint32_t SPEED_PERIOD_US = 5000UL;
-static const uint32_t TELEMETRY_PERIOD_US = 50000UL;
+static const uint32_t SPEED_PERIOD_US = 20000UL;
+static const uint32_t TELEMETRY_PERIOD_US = 100000UL;
 /* Valeur pédagogique à valider sur le robot, pas une exigence de sûreté. */
 static const uint32_t LOST_TIMEOUT_US = 500000UL;
 

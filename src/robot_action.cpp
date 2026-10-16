@@ -21,9 +21,6 @@ struct WheelSpeed
 static WheelSpeed left_speed = {NULL, 0, 0.0f, false};
 static WheelSpeed right_speed = {NULL, 0, 0.0f, false};
 
-static uint32_t last_speed_us = 0;
-static uint32_t last_telemetry_us = 0;
-
 static SpeedController left_controller = {
   0.01f,
   0.01f,
@@ -77,8 +74,6 @@ bool robot_hw_init(void){
 
   left_speed.previous_sample_us = start_us;
   right_speed.previous_sample_us = start_us;
-  last_speed_us = start_us;
-  last_telemetry_us = start_us;
 
   speed_controller_init(&left_controller);
   speed_controller_init(&right_controller);
