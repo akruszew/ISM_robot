@@ -28,11 +28,16 @@ bool speed_controller_update(
     }
 
     if( (!isfinite(reference))  
-        && (!isfinite(measurement)) 
-        && (!isfinite(dt)) )
+        || (!isfinite(measurement)) 
+        || (!isfinite(dt)) )
     {
         return false;
     }
+
+    if(dt<0){
+        return false;
+    }
+    
     float error = reference - measurement;
     
     float u = controller->kp * error 
@@ -56,6 +61,10 @@ bool speed_controller_update(
 
     /* no saturation = integrate */
     controller->integral += dt * error;
+    
+    
+    u = u>controller->out_max ? controller->out_max : u;
+    u = u<controller->out_min ? controller->out_min : u;
     *voltage_v = u;
     return true;
 
