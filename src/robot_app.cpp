@@ -267,6 +267,8 @@ void robot_app_run(uint32_t now_us)
     if(!perf_tic(PERF_APP)) instrumentation_ok = false;
     if (due_speed && hardware_ready) {
         bool present;
+        if(!perf_mark(PERF_SPEED_INTERVAL)) instrumentation_ok = false;
+        
         if (!robot_measure_speed(now_us)) robot_app_signal_fault();
         if (robot_read_line(&present)) {
             update_line_observation(present);
@@ -278,8 +280,6 @@ void robot_app_run(uint32_t now_us)
 
     /* STOP / FAULT sont traités avant toute commande de mouvement. */
     run_statechart(now_us);
-    if (due_speed) if(!perf_mark(PERF_SPEED_INTERVAL)) instrumentation_ok = false;
-        
     if (due_speed && state == FOLLOW) {
         perf_tic(PERF_CONTROL);
         if (!robot_run_control(now_us)) {
