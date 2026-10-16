@@ -1,5 +1,6 @@
 #include "robot_app.h"
 #include "robot_actions.h"
+#include "instrumentation.h"
 #include <stddef.h>
 
 /* Types C, mémoire fixe : aucun objet C++ ni allocation dynamique. */
@@ -25,6 +26,11 @@ static const uint32_t SPEED_PERIOD_US = 50000UL;
 static const uint32_t TELEMETRY_PERIOD_US = 100000UL;
 /* Valeur pédagogique à valider sur le robot, pas une exigence de sûreté. */
 static const uint32_t LOST_TIMEOUT_US = 5000000UL;
+
+static const uint32_t TEST_DURATION_US = 10000000UL;
+static bool instrumentation_ok = true;
+static uint32_t start_us;
+static bool acquisition_active = false;
 
 /* Le parent RUNNING contient FOLLOW et LOST.
    En LOST, le robot est arrêté : ce n'est pas un test de mouvement. */
@@ -241,6 +247,7 @@ bool robot_app_init(uint32_t now_us)
     last_speed_us = now_us;
     last_telemetry_us = now_us;
     enter_state(INIT, now_us);
+    perf_reset();
     return hardware_ready;
 }
 
@@ -252,8 +259,12 @@ void robot_app_signal_fault(void) { pending_events.fault = true; }
 
 void robot_app_run(uint32_t now_us)
 {
+    if(!acquisition_active){
+        start_us = now_us;
+        acquisition_active = true;
+    }
     const bool due_speed = period_is_due(now_us, &last_speed_us, SPEED_PERIOD_US);
-
+    if(!perf_tic(PERF_APP)) instrumentation_ok = false;
     if (due_speed && hardware_ready) {
         bool present;
         if (!robot_measure_speed(now_us)) robot_app_signal_fault();
@@ -267,16 +278,35 @@ void robot_app_run(uint32_t now_us)
 
     /* STOP / FAULT sont traités avant toute commande de mouvement. */
     run_statechart(now_us);
-
+    if (due_speed) if(!perf_mark(PERF_SPEED_INTERVAL)) instrumentation_ok = false;
+        
     if (due_speed && state == FOLLOW) {
+        perf_tic(PERF_CONTROL);
         if (!robot_run_control(now_us)) {
             robot_app_signal_fault();
             run_statechart(now_us); /* Réaction immédiate à l'erreur de commande. */
         }
+        perf_toc(PERF_CONTROL);
     }
 
     /* Même en FAULT, la boucle continue pour recevoir les demandes ACK. */
     if (period_is_due(now_us, &last_telemetry_us, TELEMETRY_PERIOD_US)) {
-        robot_run_telemetry(now_us);
+        perf_tic(PERF_TELEMETRY);
+        
+        /* uncomment to increase the load of the telemetry */
+        robot_run_telemetry(now_us);    
+        // for (uint16_t i =0; i<10;i++)  robot_run_telemetry(now_us);    
+        // for (uint16_t i =0; i<100;i++)  robot_run_telemetry(now_us);    
+        perf_toc(PERF_TELEMETRY);
+    }
+
+    if(!perf_toc(PERF_APP)) instrumentation_ok = false;
+    if(now_us-start_us > TEST_DURATION_US)
+    {
+        robot_stop_all();
+        perf_print_report();
+        while(1){
+            /* fin de la mesure */
+        }
     }
 }
