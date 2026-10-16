@@ -21,10 +21,10 @@ static uint32_t lost_since_us = 0;
 static uint32_t last_speed_us = 0;
 static uint32_t last_telemetry_us = 0;
 
-static const uint32_t SPEED_PERIOD_US = 20000UL;
+static const uint32_t SPEED_PERIOD_US = 50000UL;
 static const uint32_t TELEMETRY_PERIOD_US = 100000UL;
 /* Valeur pédagogique à valider sur le robot, pas une exigence de sûreté. */
-static const uint32_t LOST_TIMEOUT_US = 500000UL;
+static const uint32_t LOST_TIMEOUT_US = 5000000UL;
 
 /* Le parent RUNNING contient FOLLOW et LOST.
    En LOST, le robot est arrêté : ce n'est pas un test de mouvement. */
@@ -130,6 +130,7 @@ static void enter_state(RobotState s, uint32_t now_us)
         break;
     case FOLLOW:
         /* La super-loop, pas entry, exécutera la commande périodique. */
+        robot_reset_controllers();
         break;
     case LOST:
         robot_stop_all();

@@ -38,6 +38,8 @@ static SpeedController right_controller{
 
 static LineReading line_reading = {0,0};
 
+static uint32_t last_controller_us = 0;
+static bool controller_time_valid = false;
 
 
 bool robot_hw_init(void){
@@ -89,12 +91,14 @@ bool robot_hw_init(void){
 
 void robot_stop_all(void){
     motor_stop(motor_left, MOTOR_COAST);
-    motor_stop(motor_right, MOTOR_COAST);    
+    motor_stop(motor_right, MOTOR_COAST);
+    controller_time_valid = false;    
 }
 
 void robot_reset_controllers(void){
     speed_controller_init(&left_controller);
     speed_controller_init(&right_controller);
+    controller_time_valid = false;
 }
 
 void robot_report_fault(void){
@@ -183,19 +187,33 @@ static bool update_speed_refs(float* left_ref, float* right_ref)
 
 
 bool robot_run_control(uint32_t now_us){
-    float ref_tick_s = 50.0f;
+    
+
+    /* en cas de reprise, on initialise la prise de temps pour le calcul de delta_t */
+    if (!controller_time_valid) {
+        last_controller_us = now_us;
+        controller_time_valid = true;
+        return true;
+    }
+
+    float voltage_left, voltage_right;
+    const uint32_t dt_us = now_us - last_controller_us;
+
+    if(dt_us==0){
+      return false;
+    }
+    const float dt = (float)dt_us * 1e-6f;
+    
+    last_controller_us = now_us ;
+
+    const float ref_tick_s = 50.0f;
 
     float left_ref_tick_s,right_ref_tick_s;
+
     if(!update_speed_refs(&left_ref_tick_s,&right_ref_tick_s)){
       return false;
     }
 
-
-    float voltage_left, voltage_right;
-    static uint32_t last_us = 0;
-    float dt = (float)(now_us - last_us) * 1e-6f;
-    last_us = now_us ;
-    
     const bool left_controller_ok = 
       speed_controller_update(&left_controller,
                               -ref_tick_s-left_ref_tick_s,
