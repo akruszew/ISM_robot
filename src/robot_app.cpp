@@ -306,7 +306,7 @@ void robot_app_run(uint32_t now_us)
         robot_stop_all();
         perf_print_report();
         while(1){
-            /* fin de la mesure */
+            /* fin de la mesure, hardware reset pour recommencer */
         }
     }
 }
