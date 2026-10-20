@@ -1,6 +1,11 @@
 #include "robot_app.h"
 #include "robot_actions.h"
 #include <stddef.h>
+#include "instrumentation.h"
+#include "Arduino.h"
+static uint32_t perf_start_us;
+static const uint32_t perf_duration_us = 5000000UL;
+
 
 /* Types C, mémoire fixe : aucun objet C++ ni allocation dynamique. */
 typedef struct {
@@ -190,7 +195,7 @@ static void update_line_observation(bool present)
    La version distribuée ne permet pas le départ ; les actions fournies
    maintiennent les sorties en arrêt.
    Les helpers et les réactions communes sont déjà fournis. */
-static void run_statechart(uint32_t now_us)
+void run_statechart(uint32_t now_us)
 {
     const RobotEvent event = take_event();
 
@@ -241,6 +246,8 @@ bool robot_app_init(uint32_t now_us)
     last_speed_us = now_us;
     last_telemetry_us = now_us;
     enter_state(INIT, now_us);
+    perf_reset();
+    perf_start_us = micros();
     return hardware_ready;
 }
 
@@ -250,12 +257,12 @@ void robot_app_request_stop(void) { pending_events.stop = true; }
 void robot_app_request_ack(void) { pending_events.ack = true; }
 void robot_app_signal_fault(void) { pending_events.fault = true; }
 
-void robot_app_run(uint32_t now_us)
+void robot_app_run_control(uint32_t now_us)
 {
-    const bool due_speed = period_is_due(now_us, &last_speed_us, SPEED_PERIOD_US);
-
-    if (due_speed && hardware_ready) {
+    if (hardware_ready) {
         bool present;
+        perf_mark(PERF_SPEED_INTERVAL);
+
         if (!robot_measure_speed(now_us)) robot_app_signal_fault();
         if (robot_read_line(&present)) {
             update_line_observation(present);
@@ -268,15 +275,29 @@ void robot_app_run(uint32_t now_us)
     /* STOP / FAULT sont traités avant toute commande de mouvement. */
     run_statechart(now_us);
 
-    if (due_speed && state == FOLLOW) {
+    if (state == FOLLOW) {
+        perf_tic(PERF_CONTROL);
+
         if (!robot_run_control(now_us)) {
             robot_app_signal_fault();
             run_statechart(now_us); /* Réaction immédiate à l'erreur de commande. */
         }
-    }
+        perf_toc(PERF_CONTROL);
 
-    /* Même en FAULT, la boucle continue pour recevoir les demandes ACK. */
-    if (period_is_due(now_us, &last_telemetry_us, TELEMETRY_PERIOD_US)) {
-        robot_run_telemetry(now_us);
     }
+}
+
+
+void robot_app_run_telemetry(uint32_t now_us){
+    perf_tic(PERF_TELEMETRY);
+    robot_run_telemetry(now_us);
+    perf_toc(PERF_TELEMETRY);
+}
+
+void service(uint32_t now_us){
+  run_statechart(now_us);
+  if(Serial.available()){
+     Serial.read();
+     robot_app_request_start();
+  }
 }

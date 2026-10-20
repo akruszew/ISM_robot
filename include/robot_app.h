@@ -19,8 +19,14 @@ typedef enum {
    Appeler robot_app_run() même après un échec, sans autoriser de mouvement. */
 bool robot_app_init(uint32_t now_us);
 
-/* Un passage de super-loop ; pas d'attente active. */
-void robot_app_run(uint32_t now_us);
+/* Un passage de control ; pas d'attente active. */
+void robot_app_run_control(uint32_t now_us);
+
+/* Un passage de telemetry ; pas d'attente active. */
+void robot_app_run_telemetry(uint32_t now_us);
+
+/* Un passage de service */
+void service(uint32_t now_us);
 
 /* Lecture seule du mode logique, pas du mouvement physique. */
 RobotState robot_app_get_state(void);

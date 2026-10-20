@@ -1,19 +1,17 @@
 #include <Arduino.h>
 #include "robot_app.h"
-
-
+#include "scheduler.h"
 void setup()
 {
   // put your setup code here, to run once:
   Serial.begin(115200);
   robot_app_init(micros());
+  if(!scheduler_init(micros())) Serial.println("pb_init");
 }
+
+
 
 void loop()
 {
-  robot_app_run(micros());
-  if(Serial.available()){
-    Serial.read();
-    robot_app_request_start();
-  }
+  scheduler_run(service);
 }
